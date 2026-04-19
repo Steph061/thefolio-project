@@ -10,6 +10,9 @@ const commentRoutes = require('./routes/comment.routes');
 const contactRoutes = require('./routes/contact.routes');
 const adminRoutes = require('./routes/admin.routes');
 
+const dns = require('node:dns/promises');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 // Connect to database
 connectDB();
 
