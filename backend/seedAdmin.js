@@ -14,7 +14,7 @@ async function seed() {
       process.exit();
     }
 
-    const hashed = await bcrypt.hash('Admin@1234', 12);
+    const hashed = await bcrypt.hash('Admin1234', 12);
     await User.create({
       name: 'TheFolio Admin',
       email: 'admin@thefolio.com',
