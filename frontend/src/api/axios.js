@@ -1,10 +1,10 @@
 // frontend/src/api/axios.js
 import axios from 'axios';
 
-// Use environment variable first, then fallback to the known Render URL for production.
+// Use environment variable first, fallback to production Render URL
 const baseURL = process.env.REACT_APP_API_URL
   || (process.env.NODE_ENV === 'production'
-    ? 'https://thefolio-backend-81uo.onrender.com/api'
+    ? 'https://thefolio-api-85ep.onrender.com/api'
     : 'http://localhost:5000/api');
 
 const instance = axios.create({
