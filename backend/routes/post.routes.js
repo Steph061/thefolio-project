@@ -7,10 +7,12 @@ const upload = require('../middleware/upload');
 
 const router = express.Router();
 
-// GET /api/posts — Public: all published posts
-router.get('/', async (req, res) => {
+// ===== SPECIFIC ROUTES FIRST =====
+
+// GET /api/posts/mine — Authenticated user posts (MUST come before /:id)
+router.get('/mine', protect, memberOrAdmin, async (req, res) => {
   try {
-    const posts = await Post.find({ status: 'published' })
+    const posts = await Post.find({ author: req.user._id })
       .populate('author', 'name profile_pic')
       .sort({ createdAt: -1 });
     res.json(posts);
@@ -19,24 +21,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/posts/:id
-router.get('/:id', async (req, res) => {
+// GET /api/posts — Public: all published posts
+router.get('/', async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id)
-      .populate('author', 'name profile_pic');
-    if (!post || post.status !== 'published') {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-    res.json(post);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// GET /api/posts/mine — Authenticated user posts
-router.get('/mine', protect, memberOrAdmin, async (req, res) => {
-  try {
-    const posts = await Post.find({ author: req.user._id })
+    const posts = await Post.find({ status: 'published' })
       .populate('author', 'name profile_pic')
       .sort({ createdAt: -1 });
     res.json(posts);
@@ -62,6 +50,22 @@ router.post('/', protect, memberOrAdmin, upload.single('image'), async (req, res
     const post = await Post.create(postData);
     await post.populate('author', 'name profile_pic');
     res.status(201).json(post);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ===== GENERAL ROUTES (with :id parameters) AFTER specific routes =====
+
+// GET /api/posts/:id — Get single post
+router.get('/:id', async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate('author', 'name profile_pic');
+    if (!post || post.status !== 'published') {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    res.json(post);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -112,38 +116,6 @@ router.delete('/:id', protect, memberOrAdmin, async (req, res) => {
     }
 
     await Post.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Post deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-module.exports = router;
-router.put('/:id', protect, memberOrAdmin, upload.single('image'), async (req, res) => {
-  try {
-    const post = await pool.query('SELECT * FROM posts WHERE id = $1', [req.params.id]);
-    if (post.rows.length === 0) return res.status(404).json({ message: 'Post not found' });
-    const isOwner = post.rows[0].author_id === req.user.id;
-    if (!isOwner && req.user.role !== 'admin') return res.status(403).json({ message: 'Not authorized' });
-    const { title, body } = req.body;
-    const image = req.file ? req.file.filename : post.rows[0].image;
-    const result = await pool.query(
-      'UPDATE posts SET title=$1, body=$2, image=$3, updated_at=CURRENT_TIMESTAMP WHERE id=$4 RETURNING *',
-      [title||post.rows[0].title, body||post.rows[0].body, image, req.params.id] );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// DELETE /api/posts/:id
-router.delete('/:id', protect, memberOrAdmin, async (req, res) => {
-  try {
-    const post = await pool.query('SELECT * FROM posts WHERE id = $1', [req.params.id]);
-    if (post.rows.length === 0) return res.status(404).json({ message: 'Post not found' });
-    const isOwner = post.rows[0].author_id === req.user.id;
-    if (!isOwner && req.user.role !== 'admin') return res.status(403).json({ message: 'Not authorized' });
-    await pool.query('DELETE FROM posts WHERE id = $1', [req.params.id]);
     res.json({ message: 'Post deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
